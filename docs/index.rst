@@ -30,8 +30,10 @@ Configuration
     configuration/dry_run
     configuration/repository
     configuration/hooks
+    configuration/extensions
     configuration/publishing
     configuration/ci_servers
+    configuration/use_highest_version
 
 Examples
 --------

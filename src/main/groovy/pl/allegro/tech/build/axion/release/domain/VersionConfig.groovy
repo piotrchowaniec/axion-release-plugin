@@ -21,6 +21,8 @@ class VersionConfig {
 
     boolean ignoreUncommittedChanges = true
 
+    boolean useHighestVersion = false
+
     RepositoryConfig repository
 
     TagNameSerializationConfig tag = new TagNameSerializationConfig()
@@ -32,7 +34,7 @@ class VersionConfig {
     Closure versionIncrementer = PredefinedVersionIncrementer.versionIncrementerFor('incrementPatch')
 
     Map<String, Object> branchVersionIncrementer = [:]
-    
+
     Pattern releaseBranchPattern = Pattern.compile('^release(/.*)?$')
 
     ChecksConfig checks = new ChecksConfig()
@@ -50,8 +52,6 @@ class VersionConfig {
     private Context context
 
     private VersionService.DecoratedVersion resolvedVersion = null
-
-    private VersionContext rawVersion = null
 
     @Inject
     VersionConfig(Project project) {
@@ -137,9 +137,9 @@ class VersionConfig {
     VersionScmPosition getScmPosition() {
         ensureVersionExists()
         return new VersionScmPosition(
-                resolvedVersion.position.revision,
-                resolvedVersion.position.shortRevision,
-                resolvedVersion.position.branch
+            resolvedVersion.position.revision,
+            resolvedVersion.position.shortRevision,
+            resolvedVersion.position.branch
         )
     }
 
@@ -162,7 +162,7 @@ class VersionConfig {
 
     private void ensureContextExists() {
         if (context == null) {
-            this.context = GradleAwareContext.create(project)
+            this.context = GradleAwareContext.create(project, this)
         }
     }
 }

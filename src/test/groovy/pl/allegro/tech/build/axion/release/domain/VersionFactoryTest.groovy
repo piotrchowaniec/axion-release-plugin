@@ -37,6 +37,14 @@ class VersionFactoryTest extends Specification {
         version.toString() == '2.0.0'
     }
 
+    def "should capture parse exception and output meaningful message"() {
+        when:
+        Version version = factory.versionFromTag('release-blabla-1.0.0')
+
+        then:
+        thrown(VersionFactory.TagParseException)
+    }
+
     def "should create initial version"() {
         when:
         Version version = factory.initialVersion()
@@ -64,6 +72,30 @@ class VersionFactoryTest extends Specification {
         then:
         version.version.toString() == '1.5.0'
         version.snapshot
+    }
+
+    def "should return forced snapshot version when forcing is on and already on tag"() {
+        given:
+        VersionFactory factory = versionFactory(versionProperties().forceVersion('1.5.0').build())
+
+        when:
+        Map version = factory.createFinalVersion(scmState().onReleaseTag().build(), Version.valueOf('1.0.0'))
+
+        then:
+        version.version.toString() == '1.5.0'
+        version.snapshot
+    }
+
+    def "should return forced version without snapshot when forcing same version as current tag"() {
+        given:
+        VersionFactory factory = versionFactory(versionProperties().forceVersion('1.5.0').build())
+
+        when:
+        Map version = factory.createFinalVersion(scmState().onReleaseTag().build(), Version.valueOf('1.5.0'))
+
+        then:
+        version.version.toString() == '1.5.0'
+        !version.snapshot
     }
 
     def "should not increment patch version when being on position after next version tag"() {

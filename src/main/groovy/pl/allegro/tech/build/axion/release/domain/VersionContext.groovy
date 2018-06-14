@@ -10,7 +10,7 @@ class VersionContext {
     final boolean snapshot
 
     final Version previousVersion
-    
+
     final ScmPosition position
 
     VersionContext(Version version, boolean snapshot, Version previousVersion, ScmPosition position) {
@@ -18,5 +18,15 @@ class VersionContext {
         this.snapshot = snapshot
         this.previousVersion = previousVersion
         this.position = position
+    }
+
+    @Override
+    String toString() {
+        return "VersionContext{" +
+            "version=" + version +
+            ", snapshot=" + snapshot +
+            ", previousVersion=" + previousVersion +
+            ", position=" + position +
+            '}';
     }
 }

@@ -20,13 +20,13 @@ class SshConnector extends JschConfigSessionFactory {
 
     @Override
     protected void configure(OpenSshConfig.Host hc, Session session) {
-        session.setConfig("StrictHostKeyChecking", "no");
+        session.setConfig("StrictHostKeyChecking", "no")
     }
 
     @Override
     protected JSch getJSch(OpenSshConfig.Host hc, FS fs) throws JSchException {
         if(this.jsch == null) {
-            this.jsch = createJSch()
+            this.jsch = (!identity.useDefault) ? createJSch() : super.getJSch(hc, fs)
         }
 
         return this.jsch
@@ -36,7 +36,6 @@ class SshConnector extends JschConfigSessionFactory {
         JSch jsch = new JSch()
         byte[] passPhrase = identity.passPhrase != null ? identity.passPhrase.bytes : null
         jsch.addIdentity('key', identity.privateKey.bytes, null, passPhrase)
-
         return jsch
     }
 }

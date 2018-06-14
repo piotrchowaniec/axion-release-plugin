@@ -16,4 +16,14 @@ class ScmState {
         this.noReleaseTagsFound = noReleaseTagsFound
         this.hasUncommittedChanges = hasUncommittedChanges
     }
+
+    @Override
+    String toString() {
+        return "ScmState{" +
+            "onReleaseTag=" + onReleaseTag +
+            ", onNextVersionTag=" + onNextVersionTag +
+            ", noReleaseTagsFound=" + noReleaseTagsFound +
+            ", hasUncommittedChanges=" + hasUncommittedChanges +
+            '}';
+    }
 }

@@ -23,12 +23,27 @@ class ScmService {
         repository.tag(tagName)
     }
 
-    void push() {
-        if (!localOnlyResolver.localOnly(this.remoteAttached())) {
-            logger.quiet("Pushing all to remote: ${scmProperties.remote}")
-            repository.push(scmProperties.identity, scmProperties.pushOptions())
-        } else {
+    void dropTag(String tagName) {
+        try {
+            repository.dropTag(tagName)
+        } catch (ScmException e) {
+            logger.quiet("Exception occurred during removing the tag: ${e.message}")
+            throw e
+        }
+    }
+
+    ScmPushResult push() {
+        if (localOnlyResolver.localOnly(this.remoteAttached())) {
             logger.quiet("Changes made to local repository only")
+            return new ScmPushResult(true, Optional.empty())
+        }
+
+        try {
+            logger.quiet("Pushing all to remote: ${scmProperties.remote}")
+            return repository.push(scmProperties.identity, scmProperties.pushOptions())
+        } catch (ScmException e) {
+            logger.quiet("Exception occurred during push: ${e.message}")
+            throw e
         }
     }
 

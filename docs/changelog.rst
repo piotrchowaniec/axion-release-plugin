@@ -1,6 +1,31 @@
 Changelog
 =========
 
+* **1.9.0** (23.02.2018)
+    * removes GrGit dependency
+* **1.8.3** (30.01.2018)
+    * fixes issue with obtaining SSH credentials - thanks to `Cliffred van Velzen <https://github.com/cliffred>`_ for contribution
+    * issue with ordering of tags when using alpha versions - thanks to `Cliffred van Velzen <https://github.com/cliffred>`_ for contribution
+* **1.8.2** (29.12.2017)
+    * prints errors from remote when remote rejects push (they were silently ignored before this change) - thanks to `mareck https://github.com/mareckmareck` for contribution
+    * `-Prelease.forceVersion` no longer forces -SNAPSHOT when forced version is equal to current version
+* **1.8.1** (07.10.2017)
+    * fixes in Gradle Portal publishing code, verison 1.8.0 was not published correctly
+* **1.8.0** (07.10.2017)
+    * allows on extending axion-release tasks - thanks to `Maria Camenzuli <https://github.com/maria-camenzuli>`_ for contribution
+    * moves travis builds to JDK 8 only - from this time on JDK 7 compatibility is no longer tested
+* **1.7.2** (29.08.2017)
+    * better performance when scanning for tags - lazy scan instead of reading all commits at once
+    * adds graceful failure on version parsing problems
+    * chooses normal version over nextVersion when both on same commit
+* **1.7.1** (05.07.2017)
+    * fixes error when working on project without Git repository
+* **1.7.0** (16.07.2017)
+    * compatibility with Gradle 4.0
+* **1.6.0** (13.04.2017)
+    * added option to find highest version from all tags, not only current branch - thanks to `ProTrent <https://github.com/ProTrent>`_ for contribution
+* **1.5.0** (06.02.2017)
+    * added ordering of tags by version when multiple found on single commit
 * **1.4.1** (11.10.2016)
     * fixing critical bug in printing Git changes, which could block ``verifyRelease`` task
 * **1.4.0** (17.08.2016)

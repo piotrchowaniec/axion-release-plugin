@@ -4,6 +4,7 @@ import pl.allegro.tech.build.axion.release.domain.logging.ReleaseLogger
 import pl.allegro.tech.build.axion.release.domain.scm.ScmIdentity
 import pl.allegro.tech.build.axion.release.domain.scm.ScmPosition
 import pl.allegro.tech.build.axion.release.domain.scm.ScmPushOptions
+import pl.allegro.tech.build.axion.release.domain.scm.ScmPushResult
 import pl.allegro.tech.build.axion.release.domain.scm.ScmRepository
 import pl.allegro.tech.build.axion.release.domain.scm.TagsOnCommit
 
@@ -21,7 +22,7 @@ class DryRepository implements ScmRepository {
 
     @Override
     void fetchTags(ScmIdentity identity, String remoteName) {
-        log('fetching tags from remote')
+        log("fetching tags from remote")
         delegateRepository.fetchTags(identity, remoteName)
     }
 
@@ -31,8 +32,14 @@ class DryRepository implements ScmRepository {
     }
 
     @Override
-    void push(ScmIdentity identity, ScmPushOptions pushOptions) {
+    void dropTag(String tagName) {
+        log("dropping tag with name: $tagName")
+    }
+
+    @Override
+    ScmPushResult push(ScmIdentity identity, ScmPushOptions pushOptions) {
         log("pushing to remote: ${pushOptions.remote}")
+        return new ScmPushResult(true, Optional.empty())
     }
 
     @Override
@@ -62,6 +69,11 @@ class DryRepository implements ScmRepository {
         TagsOnCommit tags = delegateRepository.latestTags(pattern, sinceCommit)
         log("Latest tags: ${tags.tags}")
         return tags
+    }
+
+    @Override
+    List<TagsOnCommit> taggedCommits(Pattern pattern) {
+        return delegateRepository.taggedCommits(pattern)
     }
 
     @Override

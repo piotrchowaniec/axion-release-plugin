@@ -2,10 +2,13 @@ package pl.allegro.tech.build.axion.release.infrastructure.git
 
 import org.ajoberstar.grgit.Grgit
 import org.ajoberstar.grgit.exception.GrgitException
+import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.api.TagCommand
+import org.eclipse.jgit.api.errors.RefAlreadyExistsException
 import org.eclipse.jgit.lib.Config
+import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.transport.RemoteConfig
 import org.eclipse.jgit.transport.URIish
-import org.gradle.api.Project
 import org.gradle.testfixtures.ProjectBuilder
 import pl.allegro.tech.build.axion.release.domain.scm.*
 import spock.lang.Specification
@@ -14,20 +17,26 @@ import static pl.allegro.tech.build.axion.release.domain.scm.ScmPropertiesBuilde
 
 class GitRepositoryTest extends Specification {
 
-    Project project
+    File repositoryDir
+
+    File remoteRepositoryDir
 
     Grgit rawRepository
 
     Grgit remoteRawRepository
 
+    GitRepository remoteRepository
+
     GitRepository repository
 
     void setup() {
-        Project remoteProject = ProjectBuilder.builder().build()
-        remoteRawRepository = GitProjectBuilder.gitProject(remoteProject).withInitialCommit().build()[Grgit]
+        remoteRepositoryDir = File.createTempDir('axion-release', 'tmp')
+        Map remoteRepositories = GitProjectBuilder.gitProject(remoteRepositoryDir).withInitialCommit().build()
+        remoteRawRepository = remoteRepositories[Grgit]
+        remoteRepository = remoteRepositories[GitRepository]
 
-        project = ProjectBuilder.builder().build()
-        Map repositories = GitProjectBuilder.gitProject(project, remoteProject).build()
+        repositoryDir = File.createTempDir('axion-release', 'tmp')
+        Map repositories = GitProjectBuilder.gitProject(repositoryDir, remoteRepositoryDir).build()
 
         rawRepository = repositories[Grgit]
         repository = repositories[GitRepository]
@@ -35,8 +44,8 @@ class GitRepositoryTest extends Specification {
 
     def "should throw unavailable exception when initializing in unexisitng repository"() {
         given:
-        Project gitlessProject = ProjectBuilder.builder().build()
-        ScmProperties scmProperties = scmProperties(gitlessProject.rootDir).build()
+        File gitlessProject = File.createTempDir('axion-release', 'tmp')
+        ScmProperties scmProperties = scmProperties(gitlessProject).build()
 
         when:
         new GitRepository(scmProperties)
@@ -53,7 +62,7 @@ class GitRepositoryTest extends Specification {
         rawRepository.tag.list()*.fullName == ['refs/tags/release-1']
     }
 
-    def "should create new tag if it exists and it's on HEAD"() {
+    def "should create tag when on HEAD even if it already exists on the same commit"() {
         given:
         repository.tag('release-1')
 
@@ -64,7 +73,7 @@ class GitRepositoryTest extends Specification {
         rawRepository.tag.list()*.fullName == ['refs/tags/release-1']
     }
 
-    def "should throw an exception if create new tag if it exists before HEAD"() {
+    def "should throw an exception when creating new tag that already exists and it's not on HEAD"() {
         given:
         repository.tag('release-1')
         repository.commit(['*'], "commit after release")
@@ -73,7 +82,7 @@ class GitRepositoryTest extends Specification {
         repository.tag('release-1')
 
         then:
-        thrown(GrgitException)
+        thrown(RefAlreadyExistsException)
         rawRepository.tag.list()*.fullName == ['refs/tags/release-1']
     }
 
@@ -87,7 +96,7 @@ class GitRepositoryTest extends Specification {
 
     def "should signal there are uncommitted changes"() {
         when:
-        project.file('uncommitted').createNewFile()
+        new File(repositoryDir, 'uncommitted').createNewFile()
 
         then:
         repository.checkUncommittedChanges()
@@ -108,7 +117,7 @@ class GitRepositoryTest extends Specification {
 
     def "should return no tags when no commit in repository"() {
         given:
-        GitRepository commitlessRepository = GitProjectBuilder.gitProject(ProjectBuilder.builder().build()).build()[GitRepository]
+        GitRepository commitlessRepository = GitProjectBuilder.gitProject(File.createTempDir('axion-release', 'tmp')).build()[GitRepository]
 
         when:
         TagsOnCommit tags = commitlessRepository.latestTags(~/^release.*/)
@@ -145,6 +154,27 @@ class GitRepositoryTest extends Specification {
 
         then:
         tags.tags == ['release-1']
+    }
+
+    def "should return all tagged commits matching the pattern provided"() {
+        given:
+        repository.tag('release-1')
+        repository.commit(['*'], "commit after release-1")
+        repository.tag('release-2')
+        repository.commit(['*'], "commit after release-2")
+        repository.tag('another-tag-1')
+        repository.commit(['*'], "commit after another-tag-1")
+        repository.commit(['*'], "commit after another-tag-1-2")
+        repository.tag('release-4')
+        repository.commit(['*'], "commit after release-4")
+        repository.tag('release-3')
+        repository.commit(['*'], "commit after release-3")
+
+        when:
+        List<TagsOnCommit> allTaggedCommits = repository.taggedCommits(~/^release.*/)
+
+        then:
+        allTaggedCommits.collect { c -> c.tags[0] } == ['release-3', 'release-4', 'release-2', 'release-1']
     }
 
     def "should return only tags that match with prefix"() {
@@ -201,15 +231,28 @@ class GitRepositoryTest extends Specification {
 
     def "should provide current branch name and commit id in position"() {
         given:
-        repository.checkoutBranch('some-branch')
+        rawRepository.checkout(branch: 'some-branch', createBranch: true)
         repository.commit(['*'], "first commit")
 
         when:
         ScmPosition position = repository.currentPosition()
 
         then:
+        println rawRepository.branch.current.name
         position.branch == 'some-branch'
         position.revision == rawRepository.head().id
+    }
+
+    def "should provide current branch name as HEAD when in detached state"() {
+        given:
+        String headCommitId = rawRepository.repository.jgit.repository.resolve(Constants.HEAD).name()
+        rawRepository.repository.jgit.checkout().setName(headCommitId).call()
+
+        when:
+        ScmPosition position = repository.currentPosition()
+
+        then:
+        position.branch == 'HEAD'
     }
 
     def "should push changes and tag to remote"() {
@@ -254,5 +297,57 @@ class GitRepositoryTest extends Specification {
         customRemoteRawRepository.tag.list()*.fullName == ['refs/tags/release-custom']
         remoteRawRepository.log(maxCommits: 1)*.fullMessage == ['InitialCommit']
         remoteRawRepository.tag.list()*.fullName == []
+    }
+
+    def "should return error on push failure"() {
+        expect: 'this test is implemented as part of testRemote suite in RemoteRejectionTest'
+        true
+    }
+
+    def "should fetch tags from remote repository"() {
+        given:
+        remoteRepository.commit(['*'], 'remote commit')
+        remoteRepository.tag("remote-tag-to-fetch")
+
+        when:
+        repository.fetchTags(ScmIdentity.defaultIdentity(), 'origin')
+
+        then:
+        rawRepository.tag.list().size() == 1
+    }
+
+    def "should remove tag"() {
+        given:
+        repository.tag("release-1")
+        int intermediateSize = repository.taggedCommits(~/.*/).size()
+
+        when:
+        repository.dropTag("release-1")
+
+        then:
+        intermediateSize == 1
+        repository.taggedCommits(~/.*/).isEmpty()
+    }
+
+    def "should pass ahead of remote check when in sync with remote"() {
+        expect:
+        !repository.checkAheadOfRemote()
+    }
+
+    def "should fail ahead of remote check when repository behind remote"() {
+        given:
+        remoteRepository.commit(["*"], "remote commit")
+        repository.fetchTags(ScmIdentity.defaultIdentity(), "origin")
+
+        expect:
+        repository.checkAheadOfRemote()
+    }
+
+    def "should fail ahead of remote check when repository has local commits"() {
+        given:
+        repository.commit(["*"], "local commit")
+
+        expect:
+        repository.checkAheadOfRemote()
     }
 }

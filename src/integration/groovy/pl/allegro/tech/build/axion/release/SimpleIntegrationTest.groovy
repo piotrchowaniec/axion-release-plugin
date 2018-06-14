@@ -48,33 +48,15 @@ class SimpleIntegrationTest extends BaseIntegrationTest {
         result.task(":currentVersion").outcome == TaskOutcome.SUCCESS
     }
 
-    def "should return tag with highest version when there are multiple releases on single commit"() {
+    def "should force returned version with -Prelease.forceVersion flag"() {
         given:
         buildFile('')
 
-        runGradle('release', '-Prelease.version=1.0.0', '-Prelease.localOnly', '-Prelease.disableChecks')
-        runGradle('release', '-Prelease.version=1.1.0', '-Prelease.localOnly', '-Prelease.disableChecks', '-Prelease.forceSnapshot')
-
         when:
-        def result = runGradle('currentVersion')
+        def result = runGradle('currentVersion', '-Prelease.forceVersion=2.0.0')
 
         then:
-        result.output.contains('1.1.0')
-        result.task(":currentVersion").outcome == TaskOutcome.SUCCESS
-    }
-
-    def "should return tag with highest version when there are normal and alpha releases on single commit"() {
-        given:
-        buildFile('')
-
-        runGradle('release', '-Prelease.version=1.0.0', '-Prelease.localOnly', '-Prelease.disableChecks')
-        runGradle('markNextVersion', '-Prelease.version=2.0.0', '-Prelease.localOnly', '-Prelease.disableChecks')
-
-        when:
-        def result = runGradle('currentVersion')
-
-        then:
-        result.output.contains('2.0.0')
+        result.output.contains('Project version: 2.0.0-SNAPSHOT')
         result.task(":currentVersion").outcome == TaskOutcome.SUCCESS
     }
 
@@ -93,9 +75,21 @@ class SimpleIntegrationTest extends BaseIntegrationTest {
         """)
 
         when:
-        runGradle('release', '-Prelease.version=1.0.0', '-Prelease.localOnly', '-Prelease.disableChecks')
+        runGradle('release', '-Prelease.version=1.0.0', '-Prelease.localOnly', '-Prelease.disableChecks', '-s')
 
         then:
         versionFile.text == "Version: 1.0.0"
+    }
+
+    def "should fail gracefuly when failed to parse tag"() {
+        given:
+        buildFile('')
+        repository.tag('release-blabla-1.0.0')
+
+        when:
+        def result = gradle().withArguments('cV').buildAndFail()
+
+        then:
+        result.output.contains('release-blabla')
     }
 }
