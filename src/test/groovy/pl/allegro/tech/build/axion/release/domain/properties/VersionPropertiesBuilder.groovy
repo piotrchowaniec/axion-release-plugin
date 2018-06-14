@@ -1,5 +1,6 @@
 package pl.allegro.tech.build.axion.release.domain.properties
 
+import com.github.zafarkhaja.semver.Version
 import pl.allegro.tech.build.axion.release.domain.PredefinedVersionCreator
 import pl.allegro.tech.build.axion.release.domain.PredefinedVersionIncrementer
 
@@ -10,8 +11,10 @@ class VersionPropertiesBuilder {
     private boolean forceSnapshot = false
 
     private boolean ignoreUncommittedChanges = true
-    
+
     private boolean useHighestVersion = false
+
+    private Closure<Version> versionIncrementer = PredefinedVersionIncrementer.versionIncrementerFor('incrementPatch')
 
     private VersionPropertiesBuilder() {
     }
@@ -45,9 +48,14 @@ class VersionPropertiesBuilder {
         this.ignoreUncommittedChanges = false
         return this
     }
-    
+
     VersionPropertiesBuilder useHighestVersion() {
       this.useHighestVersion = true
       return this
+    }
+
+    VersionPropertiesBuilder incrementMinor() {
+        this.versionIncrementer = PredefinedVersionIncrementer.versionIncrementerFor('incrementMinor')
+        return this
     }
 }

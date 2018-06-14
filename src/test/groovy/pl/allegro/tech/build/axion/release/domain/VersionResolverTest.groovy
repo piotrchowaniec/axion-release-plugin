@@ -331,4 +331,18 @@ class VersionResolverTest extends RepositoryBasedTest {
       version.snapshot
     }
 
+    def "current version should respect version incrementer"() {
+        repository.tag('release-1.0.0')
+        repository.commit(['*'], 'some commit')
+        VersionProperties versionProperties = versionProperties().incrementMinor().build()
+
+        when:
+        VersionContext version = resolver.resolveVersion(versionProperties, tagRules, nextVersionRules)
+
+        then:
+        version.previousVersion.toString() == '1.0.0'
+        version.version.toString() == '1.1.0'
+        version.snapshot
+    }
+
 }
